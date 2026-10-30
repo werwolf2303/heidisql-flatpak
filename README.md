@@ -36,6 +36,15 @@ flatpak run com.heidisql.HeidiSQL.Qt6
 
 The bundle pulls its runtime from Flathub, so Flathub must be configured as a remote.
 
+## Installing with updates
+
+The Flatpaks are also published to a signed Flatpak repository, so `flatpak update` keeps them current:
+
+```sh
+flatpak remote-add --user --if-not-exists werwolf2303 https://werwolf2303.github.io/flatpak/werwolf2303.flatpakrepo
+flatpak install --user werwolf2303 com.heidisql.HeidiSQL.Qt6
+```
+
 ## How releases are made
 
 A scheduled GitHub Actions workflow (`.github/workflows/build.yml`) runs once a day, at 03:17 UTC:
@@ -44,7 +53,7 @@ A scheduled GitHub Actions workflow (`.github/workflows/build.yml`) runs once a 
 2. If this repository already has a release with the same tag, it stops.
 3. Otherwise it builds every Flatpak in parallel, using the upstream tarballs for that tag.
 4. When all builds succeeded it creates a release with the **same tag, title and notes as the upstream
-   release** and attaches the bundles. If any build fails, no release is created and the next daily run
+   release** and attaches the bundles, then adds them to the repository above. If any build fails, no release is created and the next daily run
    retries.
 
 You can also run the workflow by hand from the Actions tab, optionally giving an upstream tag (for

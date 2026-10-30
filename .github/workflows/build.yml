@@ -128,3 +128,54 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --title "$(cat title.txt)" \
             --notes-file notes.md
+
+  publish-repo:
+    needs: [check, release]
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: flatpak-repo-publish
+      cancel-in-progress: false
+    steps:
+      - name: Install flatpak tooling
+        run: sudo apt-get update && sudo apt-get install -y flatpak ostree gnupg
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: flatpak-*
+          path: bundles
+          merge-multiple: true
+
+      - name: Check out the repository site
+        uses: actions/checkout@v4
+        with:
+          repository: werwolf2303/werwolf2303.github.io
+          ref: master
+          token: ${{ secrets.PAGES_REPO_TOKEN }}
+          path: site
+
+      - name: Import bundles and sign
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.FLATPAK_GPG_PRIVATE_KEY }}
+          GPG_KEY_ID: ${{ secrets.FLATPAK_GPG_KEY_ID }}
+        run: |
+          export GNUPGHOME="$RUNNER_TEMP/gnupg"
+          mkdir -m700 "$GNUPGHOME"
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+
+          repo=site/flatpak/repo
+          [ -d "$repo" ] || ostree init --mode=archive-z2 --repo="$repo"
+          for bundle in bundles/*.flatpak; do
+            flatpak build-import-bundle --gpg-sign="$GPG_KEY_ID" --gpg-homedir="$GNUPGHOME" "$repo" "$bundle"
+          done
+          # Keep only the newest commit of each ref so the repository stays small.
+          flatpak build-update-repo --gpg-sign="$GPG_KEY_ID" --gpg-homedir="$GNUPGHOME" \
+            --prune --prune-depth=1 "$repo"
+
+      - name: Push
+        working-directory: site
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add flatpak/repo
+          git commit -m "HeidiSQL ${{ needs.check.outputs.tag }}"
+          git push
