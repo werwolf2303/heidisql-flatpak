@@ -1,0 +1,12 @@
+name: libqt5pas
+buildsystem: simple
+subdir: cbindings
+build-commands:
+  - qmake Qt5Pas.pro
+  - make -j$FLATPAK_BUILDER_N_JOBS
+  - install -d /app/lib
+  - cp -a libQt5Pas.so* /app/lib/
+sources:
+  - type: archive
+    url: https://github.com/davidbannon/libqt5pas/archive/refs/tags/v1.2.16.tar.gz
+    sha256: 76c9fab44142275fedca4a9c43768d30d9e167399a5684c624428b3784f2f474

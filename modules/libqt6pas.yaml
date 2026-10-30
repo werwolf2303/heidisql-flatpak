@@ -1,0 +1,12 @@
+name: libqt6pas
+buildsystem: simple
+subdir: cbindings
+build-commands:
+  - qmake6 Qt6Pas.pro
+  - make -j$FLATPAK_BUILDER_N_JOBS
+  - install -d /app/lib
+  - cp -a libQt6Pas.so* /app/lib/
+sources:
+  - type: archive
+    url: https://github.com/davidbannon/libqt6pas/archive/refs/tags/v6.2.10.tar.gz
+    sha256: dbcc13559f991958fb69de31d67c85575bbe278fdff0813b51787da50720d591

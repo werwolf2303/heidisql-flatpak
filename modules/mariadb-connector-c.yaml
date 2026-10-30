@@ -1,0 +1,16 @@
+name: mariadb-connector-c
+buildsystem: cmake-ninja
+config-opts:
+  - -DCMAKE_BUILD_TYPE=Release
+  - -DWITH_SSL=OPENSSL
+  - -DWITH_UNIT_TESTS=OFF
+  - -DINSTALL_LIBDIR=lib
+  - -DINSTALL_PLUGINDIR=lib/mariadb/plugin
+cleanup:
+  - /include
+  - /bin
+  - /lib/pkgconfig
+sources:
+  - type: archive
+    url: https://github.com/mariadb-corporation/mariadb-connector-c/archive/refs/tags/v3.4.11.tar.gz
+    sha256: 7cdb35c571dd0c187f806f569285829d31b4aba4feb93957a034b0b1e887e276

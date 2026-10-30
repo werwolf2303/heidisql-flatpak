@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=HeidiSQL (@TOOLKIT_LABEL@)
+GenericName=SQL Client
+Comment=Manage MariaDB, MySQL, PostgreSQL, SQLite and more
+Exec=heidisql
+Icon=@APP_ID@
+Terminal=false
+Categories=Development;Database;
+Keywords=sql;database;mysql;mariadb;postgresql;sqlite;
+StartupWMClass=heidisql

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>@APP_ID@</id>
+  <name>HeidiSQL (@TOOLKIT_LABEL@)</name>
+  <summary>Unofficial Flatpak of the HeidiSQL database client</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-2.0-only</project_license>
+  <description>
+    <p>HeidiSQL is a graphical client for MariaDB, MySQL, PostgreSQL, SQLite, Microsoft SQL Server and other databases.</p>
+    <p>This is an unofficial, automatically built package of the upstream Linux binaries using the @TOOLKIT_LABEL@ widgetset. It is not affiliated with or endorsed by the HeidiSQL project.</p>
+  </description>
+  <launchable type="desktop-id">@APP_ID@.desktop</launchable>
+  <url type="homepage">https://www.heidisql.com/</url>
+  <url type="bugtracker">https://github.com/HeidiSQL/HeidiSQL/issues</url>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="@VERSION@" date="@DATE@"/>
+  </releases>
+</component>

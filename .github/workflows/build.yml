@@ -1,0 +1,130 @@
+name: Build HeidiSQL Flatpaks
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Upstream release tag to build (default is the latest HeidiSQL release)
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    outputs:
+      build: ${{ steps.check.outputs.build }}
+      tag: ${{ steps.check.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Look for a new upstream release
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_TAG: ${{ inputs.tag }}
+        run: |
+          if [ -n "$REQUESTED_TAG" ]; then
+            tag="$REQUESTED_TAG"
+          else
+            tag=$(gh api repos/HeidiSQL/HeidiSQL/releases/latest --jq .tag_name)
+          fi
+          echo "Upstream tag: $tag"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+          # A manual run with an explicit tag always rebuilds; the release
+          # step replaces an existing release for that tag.
+          if [ -z "$REQUESTED_TAG" ] && gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Already released, nothing to do."
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    needs: check
+    if: needs.check.outputs.build == 'true'
+    name: ${{ matrix.toolkit }} (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { toolkit: gtk2, arch: x86_64,  runner: ubuntu-24.04 }
+          - { toolkit: qt5,  arch: x86_64,  runner: ubuntu-24.04 }
+          - { toolkit: qt6,  arch: x86_64,  runner: ubuntu-24.04 }
+          - { toolkit: qt6,  arch: aarch64, runner: ubuntu-24.04-arm }
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install flatpak tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+
+      - name: Render manifest
+        id: render
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          app_id=$(python3 -I scripts/render.py \
+            --tag "${{ needs.check.outputs.tag }}" \
+            --toolkit "${{ matrix.toolkit }}" \
+            --arch "${{ matrix.arch }}" \
+            --out "$RUNNER_TEMP/flatpak")
+          echo "app_id=$app_id" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        working-directory: ${{ runner.temp }}/flatpak
+        run: |
+          flatpak-builder --user --install-deps-from=flathub --force-clean \
+            --disable-rofiles-fuse --repo=repo build "${{ steps.render.outputs.app_id }}.json"
+
+      - name: Create bundle
+        working-directory: ${{ runner.temp }}/flatpak
+        run: |
+          flatpak build-bundle repo \
+            "HeidiSQL-${{ matrix.toolkit }}-${{ needs.check.outputs.tag }}-${{ matrix.arch }}.flatpak" \
+            "${{ steps.render.outputs.app_id }}" \
+            --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flatpak-${{ matrix.toolkit }}-${{ matrix.arch }}
+          path: ${{ runner.temp }}/flatpak/*.flatpak
+          if-no-files-found: error
+
+  release:
+    needs: [check, build]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: flatpak-*
+          path: bundles
+          merge-multiple: true
+
+      - name: Publish release with upstream title and notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.check.outputs.tag }}
+        run: |
+          gh api "repos/HeidiSQL/HeidiSQL/releases/tags/$TAG" > upstream.json
+          jq -r '.name // .tag_name' upstream.json > title.txt
+          jq -r '.body // ""' upstream.json > notes.md
+
+          # Only reachable for an explicit rebuild; replace the old release.
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag
+          fi
+
+          gh release create "$TAG" bundles/*.flatpak \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$(cat title.txt)" \
+            --notes-file notes.md

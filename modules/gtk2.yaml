@@ -1,0 +1,42 @@
+name: gtk2
+buildsystem: autotools
+build-options:
+  env:
+    CFLAGS: -O2 -g -Wno-error=incompatible-pointer-types -Wno-incompatible-pointer-types -Wno-int-conversion
+config-opts:
+  - --disable-cups
+  - --disable-papi
+  - --disable-gtk-doc
+  - --disable-gtk-doc-html
+  - --disable-man
+  - --disable-introspection
+  - --disable-glibtest
+cleanup:
+  - /include
+  - /bin/gtk-demo
+  - /share/gtk-2.0
+  - /share/aclocal
+  - /share/gtk-doc
+  - /share/man
+  - /lib/pkgconfig
+  - /lib/gtk-2.0/include
+modules:
+  - name: atk
+    buildsystem: meson
+    config-opts:
+      - -Dintrospection=false
+    cleanup:
+      - /include
+      - /lib/pkgconfig
+    sources:
+      - type: archive
+        url: https://download.gnome.org/sources/atk/2.38/atk-2.38.0.tar.xz
+        sha256: ac4de2a4ef4bd5665052952fe169657e65e895c5057dffb3c2a810f6191a0c36
+sources:
+  - type: archive
+    url: https://download.gnome.org/sources/gtk+/2.24/gtk+-2.24.33.tar.xz
+    sha256: ac2ac757f5942d318a311a54b0c80b5ef295f299c2a73c632f6bfb1ff49cc6da
+  # Only the libraries are needed; the demos and tests do not build with current compilers.
+  - type: shell
+    commands:
+      - sed -i -e 's/^SRC_SUBDIRS = .*/SRC_SUBDIRS = gdk gtk modules/' -e 's/^SUBDIRS = .*/SUBDIRS = po po-properties $(SRC_SUBDIRS) m4macros build/' Makefile.in
