@@ -150,7 +150,7 @@ jobs:
         with:
           repository: werwolf2303/werwolf2303.github.io
           ref: master
-          token: ${{ secrets.PAGES_REPO_TOKEN }}
+          ssh-key: ${{ secrets.PAGES_DEPLOY_KEY }}
           path: site
 
       - name: Import bundles and sign
